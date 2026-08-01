@@ -1,0 +1,39 @@
+/* Reset */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Root */
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+}
+
+/* Body */
+
+body {
+  background: #090b10;
+  color: #ffffff;
+  font-family: Inter, Arial, Helvetica, sans-serif;
+  overflow: hidden;
+}
+
+/* Links */
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Buttons */
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
