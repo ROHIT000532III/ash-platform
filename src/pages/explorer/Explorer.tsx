@@ -29,7 +29,10 @@ export default function Explorer() {
   };
 
   useEffect(() => {
-    void loadDirectory();
+    void getWorkspaceDirectory().then(setDirectory).catch((e) => {
+      setError(e instanceof Error ? e.message : "Unable to load workspace contents.");
+      setDirectory(null);
+    }).finally(() => setLoading(false));
   }, []);
 
   const openEntry = (entry: ExplorerEntry) => {

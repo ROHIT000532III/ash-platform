@@ -13,6 +13,14 @@ dist-ssr
 *.local
 .env
 apps/backend/data/*.db
+.venv/
+build/
+release/
+apps/backend/build/
+apps/backend/dist/
+.pytest_cache/
+.uv-cache/
+package-lock-MR_ROHIT_BHADJA.json
 
 # Editor directories and files
 .vscode/*

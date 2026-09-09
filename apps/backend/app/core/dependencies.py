@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.core.config import get_settings
@@ -29,6 +29,13 @@ class AuthenticationService:
             return None
         return record[0], self._session(record[0].id)
 
+    def local_user(self) -> User:
+        username = "local-user"
+        record = self.repository.user_by_username(username)
+        if record is not None:
+            return record[0]
+        return self.repository.create_user(username, hash_password("local-machine-default"))
+
     def current_user(self, token: str) -> User | None:
         return self.repository.user_for_session(
             session_token_hash(token, settings.auth_token_secret), datetime.now(timezone.utc).isoformat()
@@ -51,12 +58,31 @@ class AuthenticationService:
 authentication_service = AuthenticationService(conversation_repository)
 
 
+def _is_local_request(request: Request) -> bool:
+    client_host = (request.client.host if request.client else "").lower()
+    if client_host in {"127.0.0.1", "localhost"} or client_host.startswith("127.0.0."):
+        return True
+    origin = request.headers.get("origin", "").lower()
+    return (
+        origin.startswith("app://")
+        or origin.startswith("http://127.0.0.1")
+        or origin.startswith("http://localhost")
+        or origin.startswith("https://127.0.0.1")
+        or origin.startswith("https://localhost")
+    )
+
+
 def get_current_user(
+    request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
 ) -> User:
-    if credentials is None or credentials.scheme.lower() != "bearer":
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication is required.")
-    user = authentication_service.current_user(credentials.credentials)
-    if user is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication is required.")
-    return user
+    if credentials is not None:
+        if credentials.scheme.lower() != "bearer":
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication is required.")
+        user = authentication_service.current_user(credentials.credentials)
+        if user is None:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication is required.")
+        return user
+    if _is_local_request(request):
+        return authentication_service.local_user()
+    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication is required.")

@@ -12,7 +12,9 @@
     "preview": "vite preview",
 
     "electron": "electron .",
-    "desktop": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && electron .\""
+    "desktop": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
+    "backend:build": ".\\.venv\\Scripts\\python.exe -m PyInstaller --noconfirm --distpath apps\\backend\\dist --workpath apps\\backend\\build apps\\backend\\packaging\\backend.spec",
+    "electron:build": "npm run build && npm run backend:build && electron-builder --win nsis --x64"
   },
 
   "dependencies": {
@@ -38,5 +40,46 @@
     "typescript-eslint": "^8.65.0",
     "vite": "^8.2.0",
     "wait-on": "^9.1.0"
+  },
+  "build": {
+    "appId": "com.ash.ai",
+    "productName": "ASH AI",
+    "artifactName": "ASH-AI-Setup-${version}.${ext}",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "dist/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "apps/backend/dist/ASHBackend.exe",
+        "to": "backend/ASHBackend.exe"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/logo/ash logo.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "ASH AI",
+      "uninstallDisplayName": "ASH AI"
+    }
   }
 }

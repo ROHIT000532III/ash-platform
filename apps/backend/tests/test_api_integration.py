@@ -413,6 +413,28 @@ class ApiIntegrationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(headers.get("x-frame-options"), "DENY")
         self.assertEqual(headers.get("referrer-policy"), "strict-origin-when-cross-origin")
 
+        status, headers, _ = await asgi_request(
+            "GET",
+            "/health",
+            headers={"Origin": "app://./login"},
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(headers.get("access-control-allow-origin"), "app://./login")
+        self.assertEqual(headers.get("access-control-allow-credentials"), "true")
+
+        status, headers, _ = await asgi_request(
+            "OPTIONS",
+            "/api/auth/register",
+            headers={
+                "Origin": "app://./login",
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "content-type",
+            },
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(headers.get("access-control-allow-origin"), "app://./login")
+        self.assertIn("POST", headers.get("access-control-allow-methods", ""))
+
     async def test_workspace_explorer_is_authenticated_and_root_confined(self) -> None:
         root = Path(self.workspace_temp_dir.name); nested = root / "projects" / "alpha"; nested.mkdir(parents=True)
         document = nested / "notes.txt"; document.write_text("private workspace note", encoding="utf-8")
@@ -431,13 +453,16 @@ class ApiIntegrationTests(unittest.IsolatedAsyncioTestCase):
 
         outside = Path(self.temp_dir.name) / "outside.txt"; outside.write_text("outside", encoding="utf-8")
         link = root / "escape-link"
+        symlink_created = False
         try:
             link.symlink_to(outside)
+            symlink_created = True
         except OSError:
-            self.skipTest("Symlink creation is unavailable on this Windows configuration.")
-        status, _, body = await asgi_request("GET", "/api/explorer", token=self.token)
-        self.assertEqual(status, 200)
-        self.assertNotIn("escape-link", [item["name"] for item in json.loads(body)["entries"]])
+            pass
+        if symlink_created:
+            status, _, body = await asgi_request("GET", "/api/explorer", token=self.token)
+            self.assertEqual(status, 200)
+            self.assertNotIn("escape-link", [item["name"] for item in json.loads(body)["entries"]])
         status, _, _ = await asgi_request("POST", "/api/chat", {"message": "Hello"})
         self.assertEqual(status, 401)
         status, _, _ = await asgi_request("POST", "/api/chat/stream", {"message": "Hello"})

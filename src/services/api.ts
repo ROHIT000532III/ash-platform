@@ -12,10 +12,15 @@ export function saveAuthSession(session: AuthSession): void { localStorage.setIt
 export function clearAuthSession(): void { localStorage.removeItem(AUTH_SESSION_KEY); }
 export function setUnauthorizedHandler(handler: (() => void) | null): void { unauthorizedHandler = handler; }
 async function authenticatedFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
-  const headers = new Headers(init.headers); const token = getAuthSession()?.access_token;
+  const headers = new Headers(init.headers);
+  const requestUrl = new URL(input instanceof Request ? input.url : input.toString(), window.location.href);
+  const isLocalRequest = requestUrl.hostname === "127.0.0.1"
+    || requestUrl.hostname === "localhost"
+    || requestUrl.hostname === "::1";
+  const token = isLocalRequest ? undefined : getAuthSession()?.access_token;
   if (token) headers.set("Authorization", `Bearer ${token}`);
   const response = await fetch(input, { ...init, headers });
-  if (response.status === 401) { clearAuthSession(); unauthorizedHandler?.(); }
+  if (response.status === 401 && !isLocalRequest) { clearAuthSession(); unauthorizedHandler?.(); }
   return response;
 }
 
